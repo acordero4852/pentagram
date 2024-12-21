@@ -2,25 +2,40 @@
 
 import { useState } from "react";
 
-export default function Home() {
+interface ImageGeneratorProps {
+  generateImage: (
+    text: string
+  ) => Promise<{ success: boolean; imageUrl?: string; error?: string }>;
+}
+
+export default function ImageGenerator({ generateImage }: ImageGeneratorProps) {
   const [inputText, setInputText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setImageUrl(null);
+    setError(null);
 
     try {
-      const response = await fetch("/api/generate-image", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ text: inputText }),
-      });
+      const result = await generateImage(inputText);
 
-      const data = await response.json();
-      console.log(data);
+      if (!result.success) {
+        throw new Error(result.error || "Failed to generate image");
+      }
+
+      if (result.imageUrl) {
+        const img = new Image();
+        const url = result.imageUrl;
+        img.onload = () => {
+          setImageUrl(url);
+        };
+        img.src = url;
+      }
+
       setInputText("");
     } catch (error) {
       console.error("Error:", error);
@@ -31,9 +46,25 @@ export default function Home() {
 
   return (
     // TODO: Update the UI here to show the images generated
-    
+
     <div className="min-h-screen flex flex-col justify-between p-8">
-      <main className="flex-1">{/* Main content can go here */}</main>
+      <main className="flex-1 flex flex-col items-center gap-8">
+        {error && (
+          <div className="w-full max-w-2xl p-4 bg-red-50 border border-red-200 rounded-lg">
+            {error}
+          </div>
+        )}
+
+        {imageUrl && (
+          <div className="w-full max-w-2xl rounded-lg overflow-hidden shadow-lg">
+            <img
+              src={imageUrl}
+              alt="Generated Image"
+              className="w-full h-auto"
+            />
+          </div>
+        )}
+      </main>
 
       <footer className="w-full max-w-3xl mx-auto">
         <form onSubmit={handleSubmit} className="w-full">
